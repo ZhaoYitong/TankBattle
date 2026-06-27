@@ -242,10 +242,10 @@ public class TankBattle extends JPanel {
         win = false;
         paused = false;
         buildMap();
-        // Player spawns at bottom center
+        // Player spawns at bottom, left of the base (base is at col COLS/2)
         player =
                 new Tank(
-                        (COLS / 2) * CELL + (CELL - TANK) / 2,
+                        (COLS / 2 - 2) * CELL + (CELL - TANK) / 2,
                         (ROWS - 2) * CELL + (CELL - TANK) / 2,
                         Dir.UP,
                         false);
@@ -281,7 +281,7 @@ public class TankBattle extends JPanel {
             for (int c = 2; c < COLS - 2; c++) {
                 if (map[r][c] != Tile.EMPTY) continue;
                 // Avoid player spawn area and enemy spawn areas
-                if (r >= ROWS - 3 && Math.abs(c - COLS / 2) <= 1) continue;
+                if (r >= ROWS - 3 && Math.abs(c - COLS / 2) <= 2) continue;
                 if (r <= 2 && (c <= 2 || c >= COLS - 3)) continue;
                 double v = rnd.nextDouble();
                 if (v < 0.18) map[r][c] = Tile.BRICK;
@@ -465,7 +465,7 @@ public class TankBattle extends JPanel {
     }
 
     void respawnPlayer() {
-        player.x = (COLS / 2) * CELL + (CELL - TANK) / 2;
+        player.x = (COLS / 2 - 2) * CELL + (CELL - TANK) / 2;
         player.y = (ROWS - 2) * CELL + (CELL - TANK) / 2;
         player.dir = Dir.UP;
     }
