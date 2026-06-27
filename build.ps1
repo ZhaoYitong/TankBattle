@@ -1,4 +1,4 @@
-# 坦克大战打包脚本 (PowerShell)：编译 src 下所有 .java 并打包为 TankBattle.jar
+# Tank Battle build script (PowerShell): compile all .java under src and package as TankBattle.jar
 Set-Location -Path $PSScriptRoot
 if (-not (Test-Path out)) { New-Item -ItemType Directory -Path out | Out-Null }
 

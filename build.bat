@@ -1,5 +1,5 @@
 @echo off
-REM 坦克大战打包脚本：编译 src 下所有 .java 并打包为 TankBattle.jar
+REM Tank Battle build script: compile all .java under src and package as TankBattle.jar
 setlocal
 cd /d "%~dp0"
 

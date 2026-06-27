@@ -5,47 +5,47 @@ import java.util.*;
 import java.util.List;
 
 /**
- * 坦克大战 (Tank Battle)
+ * Tank Battle
  *
- * 调试运行：在 IDE 中运行 Main.java（或直接运行本类的 main 方法）。
- * 打包运行：见项目根目录 build.bat / build.ps1，生成 TankBattle.jar 后用
- *           java -jar TankBattle.jar 运行。
+ * Debug: run Main.java in IDE (or run this class's main method directly).
+ * Package: use build.bat / build.ps1 in project root to generate TankBattle.jar,
+ *          then run with java -jar TankBattle.jar.
  *
- * 操作：
- *   W A S D / 方向键 : 移动
- *   空格            : 开火
- *   P               : 暂停 / 继续
- *   R               : 重新开始
- *   ESC             : 退出
+ * Controls:
+ *   W A S D / Arrow keys : Move
+ *   Space                : Fire
+ *   P                    : Pause / Resume
+ *   R                    : Restart
+ *   ESC                  : Quit
  */
 public class TankBattle extends JPanel {
 
-    // ===== 基本常量 =====
-    static final int CELL = 32;            // 每格像素
-    static final int COLS = 15;            // 地图列数
-    static final int ROWS = 15;            // 地图行数
-    static final int HUD = 44;             // 顶部信息栏高度
-    static final int W = COLS * CELL;      // 游戏区宽
-    static final int H = ROWS * CELL + HUD;// 总高
+    // ===== Constants =====
+    static final int CELL = 32;            // pixel size per grid cell
+    static final int COLS = 15;            // map columns
+    static final int ROWS = 15;            // map rows
+    static final int HUD = 44;             // top info bar height
+    static final int W = COLS * CELL;      // game area width
+    static final int H = ROWS * CELL + HUD;// total height
 
-    // 方向
+    // Direction
     enum Dir { UP, DOWN, LEFT, RIGHT }
 
-    // 地图块
+    // Map tile types
     enum Tile { EMPTY, BRICK, STEEL, BASE }
 
-    // ===== 游戏对象 =====
-    static final int TANK = 28;            // 坦克边长
-    static final int BULLET = 6;           // 子弹边长
+    // ===== Game Objects =====
+    static final int TANK = 28;            // tank size
+    static final int BULLET = 6;           // bullet size
 
     class Tank {
         int x, y;
         Dir dir;
         int speed;
         boolean enemy;
-        long lastShot;     // 上次开火时间(ms)
-        int cooldown;      // 开火冷却(ms)
-        long aiTurn;       // AI 下次换向时间
+        long lastShot;     // last fire time (ms)
+        int cooldown;      // fire cooldown (ms)
+        long aiTurn;       // AI next turn time
         boolean moving;
         Tank(int x, int y, Dir dir, boolean enemy) {
             this.x = x; this.y = y; this.dir = dir;
@@ -99,7 +99,7 @@ public class TankBattle extends JPanel {
         boolean done() { return System.currentTimeMillis() - born > 280; }
     }
 
-    // ===== 游戏状态 =====
+    // ===== Game State =====
     Tile[][] map = new Tile[ROWS][COLS];
     List<Tank> tanks = new ArrayList<>();
     List<Bullet> bullets = new ArrayList<>();
@@ -108,7 +108,7 @@ public class TankBattle extends JPanel {
     Tank player;
     int score = 0;
     int lives = 3;
-    int enemiesRemaining = 12;     // 本关剩余敌人总数
+    int enemiesRemaining = 12;     // remaining enemies in this level
     int enemiesOnField = 0;
     int maxOnField = 4;
     boolean gameOver = false;
@@ -116,10 +116,10 @@ public class TankBattle extends JPanel {
     boolean paused = false;
     long lastSpawn;
 
-    // 输入
+    // Input
     final Set<Integer> keys = new HashSet<>();
 
-    // 预生成地图用的随机种子（固定关卡，便于调试）
+    // Random seed for map generation (fixed level for debugging)
     final Random rnd = new Random(42);
 
     TankBattle() {
@@ -127,15 +127,15 @@ public class TankBattle extends JPanel {
         setFocusable(true);
         setupKeyBindings();
         reset();
-        // 主循环 ~60fps
+        // Main loop ~60fps
         new javax.swing.Timer(16, e -> tick()).start();
     }
 
-    /** 用 InputMap/ActionMap 绑定按键，不依赖组件焦点，只要窗口有焦点即可响应。 */
+    /** Bind keys via InputMap/ActionMap, responds as long as the window has focus. */
     void setupKeyBindings() {
         InputMap im = getInputMap(WHEN_IN_FOCUSED_WINDOW);
         ActionMap am = getActionMap();
-        // 移动键 + 开火键：按下加入集合，松开移出集合
+        // Move + fire keys: add to set on press, remove on release
         int[] moveKeys = {
             KeyEvent.VK_W, KeyEvent.VK_UP,
             KeyEvent.VK_S, KeyEvent.VK_DOWN,
@@ -155,7 +155,7 @@ public class TankBattle extends JPanel {
                 public void actionPerformed(ActionEvent e) { keys.remove(code); }
             });
         }
-        // 单次触发的功能键
+        // Single-trigger function keys
         bindAction(im, am, KeyEvent.VK_P, false, e -> paused = !paused);
         bindAction(im, am, KeyEvent.VK_R, false, e -> reset());
         bindAction(im, am, KeyEvent.VK_ESCAPE, false, e -> System.exit(0));
@@ -169,7 +169,7 @@ public class TankBattle extends JPanel {
         });
     }
 
-    // ===== 初始化 / 重置 =====
+    // ===== Init / Reset =====
     void reset() {
         tanks.clear();
         bullets.clear();
@@ -182,7 +182,7 @@ public class TankBattle extends JPanel {
         win = false;
         paused = false;
         buildMap();
-        // 玩家出生在底部中央
+        // Player spawns at bottom center
         player = new Tank((COLS/2)*CELL + (CELL-TANK)/2, (ROWS-2)*CELL + (CELL-TANK)/2, Dir.UP, false);
         tanks.add(player);
         lastSpawn = 0;
@@ -193,25 +193,25 @@ public class TankBattle extends JPanel {
             for (int c = 0; c < COLS; c++)
                 map[r][c] = Tile.EMPTY;
 
-        // 外围钢墙
+        // Outer steel walls
         for (int i = 0; i < COLS; i++) { map[0][i] = Tile.STEEL; map[ROWS-1][i] = Tile.STEEL; }
         for (int i = 0; i < ROWS; i++) { map[i][0] = Tile.STEEL; map[i][COLS-1] = Tile.STEEL; }
 
-        // 基地（鹰）放在底部中央
+        // Base (eagle) placed at bottom center
         int baseR = ROWS - 2, baseC = COLS / 2;
         map[baseR][baseC] = Tile.BASE;
-        // 基地周围砖墙保护
+        // Brick walls protecting the base
         int[][] guard = {{-1,-1},{-1,0},{-1,1},{0,-1},{0,1}};
         for (int[] d : guard) {
             int r = baseR + d[0], c = baseC + d[1];
             if (map[r][c] == Tile.EMPTY) map[r][c] = Tile.BRICK;
         }
 
-        // 随机散布砖墙与钢墙
+        // Randomly scatter brick and steel walls
         for (int r = 2; r < ROWS - 2; r++) {
             for (int c = 2; c < COLS - 2; c++) {
                 if (map[r][c] != Tile.EMPTY) continue;
-                // 避开玩家出生区与敌人出生区
+                // Avoid player spawn area and enemy spawn areas
                 if (r >= ROWS - 3 && Math.abs(c - COLS/2) <= 1) continue;
                 if (r <= 2 && (c <= 2 || c >= COLS - 3)) continue;
                 double v = rnd.nextDouble();
@@ -219,13 +219,13 @@ public class TankBattle extends JPanel {
                 else if (v < 0.24) map[r][c] = Tile.STEEL;
             }
         }
-        // 中央对称加几块钢墙做掩体
+        // Add symmetric steel walls in center as cover
         map[ROWS/2][COLS/2] = Tile.STEEL;
         map[ROWS/2][COLS/2 - 1] = Tile.BRICK;
         map[ROWS/2][COLS/2 + 1] = Tile.BRICK;
     }
 
-    // ===== 主循环 =====
+    // ===== Main Loop =====
     void tick() {
         if (!paused && !gameOver && !win) {
             handleInput();
@@ -264,7 +264,7 @@ public class TankBattle extends JPanel {
     void aiControl(Tank t) {
         long now = System.currentTimeMillis();
         if (now > t.aiTurn) {
-            // 30% 概率朝玩家方向，否则随机
+            // 30% chance to move toward player, otherwise random
             if (rnd.nextDouble() < 0.3) {
                 int dx = player.x - t.x;
                 int dy = player.y - t.y;
@@ -277,10 +277,10 @@ public class TankBattle extends JPanel {
             t.aiTurn = now + 600 + rnd.nextInt(900);
         }
         if (!tryMove(t)) {
-            // 撞墙立即换向
+            // Turn immediately on hitting a wall
             t.aiTurn = now;
         }
-        // 随机开火
+        // Random fire
         if (rnd.nextDouble() < 0.04) t.fire();
     }
 
@@ -293,12 +293,12 @@ public class TankBattle extends JPanel {
             case RIGHT: nx += t.speed; break;
         }
         Rectangle nr = new Rectangle(nx, ny, TANK, TANK);
-        // 边界
+        // Bounds
         if (nx < CELL || ny < CELL || nx + TANK > (COLS-1)*CELL || ny + TANK > (ROWS-1)*CELL)
             return false;
-        // 墙
+        // Walls
         if (hitsWall(nr)) return false;
-        // 其他坦克
+        // Other tanks
         for (Tank o : tanks) {
             if (o == t) continue;
             if (nr.intersects(o.rect())) return false;
@@ -324,9 +324,9 @@ public class TankBattle extends JPanel {
         for (Bullet b : bullets) {
             b.step();
             Rectangle br = b.rect();
-            // 出界
+            // Out of bounds
             if (b.x < 0 || b.y < 0 || b.x > W || b.y > H) { b.dead = true; continue; }
-            // 撞墙
+            // Hit wall
             int c = b.x / CELL, r = b.y / CELL;
             if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
                 Tile t = map[r][c];
@@ -346,10 +346,10 @@ public class TankBattle extends JPanel {
                     continue;
                 }
             }
-            // 撞坦克
+            // Hit tank
             for (Tank tk : tanks) {
-                if (tk.enemy == b.enemy) continue; // 同阵营不伤
-                if (toRemove.contains(tk)) continue; // 已标记移除
+                if (tk.enemy == b.enemy) continue; // same faction, no damage
+                if (toRemove.contains(tk)) continue; // already marked for removal
                 if (br.intersects(tk.rect())) {
                     b.dead = true;
                     explosions.add(new Explosion(tk.x + TANK/2, tk.y + TANK/2));
@@ -359,7 +359,7 @@ public class TankBattle extends JPanel {
                         enemiesRemaining--;
                         score += 100;
                     } else {
-                        // 玩家被击中
+                        // Player hit
                         lives--;
                         if (lives <= 0) { gameOver = true; }
                         else respawnPlayer();
@@ -382,7 +382,7 @@ public class TankBattle extends JPanel {
         long now = System.currentTimeMillis();
         if (enemiesOnField < maxOnField && enemiesRemaining > enemiesOnField
                 && now - lastSpawn > 1500) {
-            // 三个出生点：左上、中上、右上
+            // Three spawn points: top-left, top-center, top-right
             int[] xs = { 1*CELL + (CELL-TANK)/2, (COLS/2)*CELL + (CELL-TANK)/2, (COLS-2)*CELL + (CELL-TANK)/2 };
             int spawnIdx = rnd.nextInt(xs.length);
             int sx = xs[spawnIdx], sy = 1*CELL + (CELL-TANK)/2;
@@ -403,14 +403,14 @@ public class TankBattle extends JPanel {
         if (enemiesRemaining <= 0 && enemiesOnField <= 0) win = true;
     }
 
-    // ===== 渲染 =====
+    // ===== Rendering =====
     @Override protected void paintComponent(Graphics g) {
         Graphics2D g2 = (Graphics2D) g;
-        // 背景
+        // Background
         g2.setColor(new Color(30, 30, 30));
         g2.fillRect(0, 0, W, H);
 
-        // 地图
+        // Map
         for (int r = 0; r < ROWS; r++) {
             for (int c = 0; c < COLS; c++) {
                 Tile t = map[r][c];
@@ -436,14 +436,14 @@ public class TankBattle extends JPanel {
             }
         }
 
-        // 坦克
+        // Tanks
         for (Tank t : tanks) drawTank(g2, t);
 
-        // 子弹
+        // Bullets
         g2.setColor(Color.WHITE);
         for (Bullet b : bullets) g2.fillRect(b.x, b.y, BULLET, BULLET);
 
-        // 爆炸
+        // Explosions
         for (Explosion e : explosions) {
             long age = System.currentTimeMillis() - e.born;
             int radius = (int)(age / 10) + 4;
@@ -464,7 +464,7 @@ public class TankBattle extends JPanel {
                 340, hy);
         g2.drawString("WASD/Arrows:Move  Space:Fire  P:Pause  R:Restart  ESC:Quit", 10, hy + 14);
 
-        // 覆盖层
+        // Overlay
         if (gameOver || win) {
             g2.setColor(new Color(0, 0, 0, 160));
             g2.fillRect(0, 0, W, H);
@@ -486,7 +486,7 @@ public class TankBattle extends JPanel {
         g2.fillRect(t.x, t.y, TANK, TANK);
         g2.setColor(dark);
         g2.drawRect(t.x, t.y, TANK, TANK);
-        // 履带
+        // Tracks
         g2.setColor(Color.DARK_GRAY);
         switch (t.dir) {
             case UP: case DOWN:
@@ -498,10 +498,10 @@ public class TankBattle extends JPanel {
                 g2.fillRect(t.x + 2, t.y + TANK - 5, TANK - 4, 5);
                 break;
         }
-        // 炮塔
+        // Turret
         g2.setColor(dark);
         g2.fillOval(t.x + TANK/2 - 6, t.y + TANK/2 - 6, 12, 12);
-        // 炮管
+        // Barrel
         g2.setColor(Color.BLACK);
         int cx = t.x + TANK/2, cy = t.y + TANK/2;
         switch (t.dir) {
@@ -512,10 +512,10 @@ public class TankBattle extends JPanel {
         }
     }
 
-    // ===== 入口 =====
+    // ===== Entry Point =====
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            JFrame frame = new JFrame("Tank Battle - 坦克大战");
+            JFrame frame = new JFrame("Tank Battle");
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             frame.setResizable(false);
             TankBattle game = new TankBattle();

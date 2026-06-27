@@ -1,3 +1,3 @@
 @echo off
-REM 运行打包好的 TankBattle.jar
+REM Run the packaged TankBattle.jar
 java -jar "%~dp0TankBattle.jar"

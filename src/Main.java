@@ -1,5 +1,5 @@
-// 调试入口：在 IDE 中直接 Run/Debug 本文件即可启动坦克大战。
-// 打包入口见 src/TankBattle.java 的 main(String[]) 方法。
+// Debug entry: run/debug this file directly in IDE to launch Tank Battle.
+// Package entry: see main(String[]) in src/TankBattle.java.
 void main() {
     TankBattle.main(new String[0]);
 }
